@@ -1,0 +1,191 @@
+Front-End Development
+React.js for UI and Dynamic Content Rendering
+Code: Basic React Setup for User Interface
+Install React and Dependencies:
+bash
+npx create-react-app frontend
+cd frontend
+npm install axios react-router-dom
+Code Example: Dynamic Task List with API Integration src/App.js:
+#javascript
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const App = () => {
+  const [tasks, setTasks] = useState([]);
+
+  // Fetch tasks from the backend API
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/tasks');
+        setTasks(response.data);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+    };
+
+    fetchTasks();
+  }, []);
+
+  return (
+    <div>
+      <h1>Task List</h1>
+      <ul>
+        {tasks.map((task) => (
+          <li key={task._id}>
+            {task.title} - {task.status}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default App;
+________________________________________
+
+
+2. Back-End Development
+Node.js and Express.js for RESTful API
+Code: Setting Up the Backend
+Install Required Packages:
+bash
+npm init -y
+npm install express mongoose bcrypt jsonwebtoken cors dotenv
+Create the Server: backend/server.js:
+#javascript
+const express = require('express');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+// MongoDB Connection
+mongoose.connect('mongodb://localhost:27017/myapp', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error(err));
+
+// User Schema
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+});
+const User = mongoose.model('User', userSchema);
+
+// Task Schema
+const taskSchema = new mongoose.Schema({
+  title: String,
+  status: { type: String, default: 'pending' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+});
+const Task = mongoose.model('Task', taskSchema);
+
+// Register User
+app.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = new User({ name, email, password: hashedPassword });
+  await user.save();
+  res.status(201).send('User registered successfully');
+});
+
+// Login User
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return res.status(400).send('Invalid credentials');
+  }
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  res.json({ token });
+});
+
+// Get Tasks
+app.get('/tasks', async (req, res) => {
+  const tasks = await Task.find();
+  res.json(tasks);
+});
+
+// Start Server
+app.listen(5000, () => console.log('Server running on http://localhost:5000'));________________________________________
+3. Database Integration
+MongoDB with Mongoose
+Code: Database Models
+•	User Model:
+#javascript
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+});
+const User = mongoose.model('User', userSchema);
+•	Task Model:
+javascript
+Copy code
+const taskSchema = new mongoose.Schema({
+  title: String,
+  status: { type: String, default: 'pending' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+});
+const Task = mongoose.model('Task', taskSchema);
+________________________________________
+
+
+
+4. Security Implementation
+Authentication and Authorization
+Middleware for JWT Authentication:
+backend/middleware/auth.js:
+#javascript
+const jwt = require('jsonwebtoken');
+
+const authenticate = (req, res, next) => {
+  const token = req.header('Authorization').replace('Bearer ', '');
+  if (!token) return res.status(401).send('Access denied');
+
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(400).send('Invalid token');
+  }
+};
+
+module.exports = authenticate;
+Use this middleware for protected routes:
+javascript
+Copy code
+const authenticate = require('./middleware/auth');
+
+app.get('/tasks', authenticate, async (req, res) => {
+  const tasks = await Task.find({ assignedTo: req.user.id });
+  res.json(tasks);
+});
+________________________________________
+5. Challenges and Solutions
+•	Asynchronous Handling: Use async/await in both front-end and back-end for efficient API calls and server responses.
+•	Secure Data: Use bcrypt for password hashing and JWT for session management.
+•	Performance: Optimize database queries with proper indexing and lazy loading for React components.
+________________________________________
+Next Steps
+1.	Run Backend:
+bash
+node backend/server.js
+2.	Run Frontend:
+bash
+cd frontend
+npm start
+3.	Open:
+o	Frontend: http://localhost:3000
+o	Backend API: http://localhost:5000
+
